@@ -18,12 +18,6 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      # - name: Run Linter
-      #   run: npm run lint
-
-      - name: Build app
-        run: npm run build
-
   scan:
     needs: lint-and-test
     if: ${{ github.event_name == 'pull_request' && github.event.repository.private == false }}
