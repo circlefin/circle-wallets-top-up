@@ -73,7 +73,25 @@ export async function POST(req: NextRequest) {
     // Same-chain transfers are allowed (withdrawal from Gateway to wallet)
     // Cross-chain transfers will go through Gateway's burn/mint process
 
-    const amountInAtomicUnits = BigInt(Math.floor(parseFloat(amount) * 1_000_000));
+    const parsedAmount = parseFloat(amount);
+
+    if (!isFinite(parsedAmount)) {
+      return NextResponse.json(
+        { error: "Amount must be a valid number" },
+        { status: 400 }
+      );
+    }
+
+    if (parsedAmount <= 0) {
+      return NextResponse.json(
+        { error: "Amount must be greater than 0" },
+        { status: 400 }
+      );
+    }
+
+    // Parse integer and decimal parts separately to avoid float precision issues
+    const [intPart, decPart = ""] = parsedAmount.toFixed(6).split(".");
+    const amountInAtomicUnits = BigInt(intPart) * 1_000_000n + BigInt(decPart);
 
     // Get the user's multichain SCA wallet
     const { data: wallets, error: walletError } = await supabase
