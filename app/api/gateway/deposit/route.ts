@@ -55,16 +55,15 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Convert amount to bigint (amount should be in USDC, multiply by 1_000_000)
-    const parsedAmount = parseFloat(amount);
-
-    // Validate amount is a finite number
-    if (!isFinite(parsedAmount)) {
+    if (typeof amount !== "string" || !/^\d+(?:\.\d{1,6})?$/.test(amount)) {
       return NextResponse.json(
-        { error: "Amount must be a valid number" },
+        { error: "Amount must be a valid USDC amount" },
         { status: 400 }
       );
     }
+
+    // Convert amount to bigint (amount should be in USDC, multiply by 1_000_000)
+    const parsedAmount = parseFloat(amount);
 
     // Validate if amount is positive
     if (parsedAmount <= 0) {
@@ -83,8 +82,9 @@ export async function POST(req: NextRequest) {
     }
 
     // Parse integer and decimal parts separately to avoid float precision issues
-    const [intPart, decPart = ""] = parsedAmount.toFixed(6).split(".");
-    const amountInAtomicUnits = BigInt(intPart) * 1_000_000n + BigInt(decPart);
+    const [intPart, decPart = ""] = amount.split(".");
+    const paddedDec = decPart.padEnd(6, "0");
+    const amountInAtomicUnits = BigInt(intPart) * 1_000_000n + BigInt(paddedDec);
 
     // Get the user's multichain SCA wallet
     const { data: wallets, error: walletError } = await supabase
