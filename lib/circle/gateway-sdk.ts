@@ -44,12 +44,12 @@ const arcRpcKey = process.env.ARC_TESTNET_RPC_KEY || 'c0ca2582063a5bbd5db2f98c13
 export const arcTestnet = {
   id: 5042002,
   name: 'Arc Testnet',
-  nativeCurrency: { name: 'USD Coin', symbol: 'USDC', decimals: 6 },
+  nativeCurrency: { name: 'USDC', symbol: 'USDC', decimals: 18 },
   rpcUrls: {
     default: { http: [`https://rpc.testnet.arc.network/${arcRpcKey}`] },
   },
   blockExplorers: {
-    default: { name: 'Explorer', url: 'https://explorer.arc.testnet.circle.com' },
+    default: { name: 'Arcscan', url: 'https://testnet.arcscan.app' },
   },
   testnet: true,
 } as const satisfies Chain;
