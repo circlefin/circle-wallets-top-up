@@ -294,8 +294,11 @@ interface ChallengeResponse {
   id: string;
 }
 
+const MAX_RETRIES = 60;
+
 async function waitForTransactionConfirmation(challengeId: string): Promise<string> {
-  while (true) {
+  let attempts = 0;
+  while (attempts < MAX_RETRIES) {
     const response = await circleDeveloperSdk.getTransaction({ id: challengeId });
     const tx = response.data?.transaction;
 
@@ -310,9 +313,11 @@ async function waitForTransactionConfirmation(challengeId: string): Promise<stri
       throw new Error(`Transaction ${challengeId} failed with reason: ${tx.errorReason}`);
     }
 
-    console.log(`Transaction ${challengeId} state: ${tx?.state}. Polling again in 2s...`);
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    console.log(`Transaction ${challengeId} state: ${tx?.state}. Polling again in 5s... (attempt ${attempts + 1}/${MAX_RETRIES})`);
+    await new Promise(resolve => setTimeout(resolve, 5000));
+    attempts++;
   }
+  throw new Error(`Transaction confirmation timed out after 5 minutes (${MAX_RETRIES} attempts). Challenge ID: ${challengeId}`);
 }
 
 async function initiateContractInteraction(
@@ -882,14 +887,15 @@ export async function transferUnifiedBalanceCircle(
   let finalSignature = attestationSignature;
 
   if (!finalAttestation || !finalSignature) {
-    while (true) {
-      await new Promise((r) => setTimeout(r, 3000)); // Wait 3s
+    let attempts = 0;
+    while (attempts < MAX_RETRIES) {
+      await new Promise((r) => setTimeout(r, 5000)); // Wait 5s
 
       const pollResponse = await fetch(`https://gateway-api-testnet.circle.com/v1/transfers/${transferId}`);
       const pollJson = await pollResponse.json();
       const status = pollJson.status || pollJson.state;
 
-      console.log(`Transfer Status: ${status}`);
+      console.log(`Transfer Status: ${status} (attempt ${attempts + 1}/${MAX_RETRIES})`);
 
       if (pollJson.attestation && pollJson.signature) {
         finalAttestation = pollJson.attestation;
@@ -898,6 +904,12 @@ export async function transferUnifiedBalanceCircle(
       } else if (status === "FAILED") {
         throw new Error(`Transfer failed on Gateway: ${JSON.stringify(pollJson)}`);
       }
+
+      attempts++;
+    }
+
+    if (!finalAttestation || !finalSignature) {
+      throw new Error(`Transaction confirmation timed out after 5 minutes (${MAX_RETRIES} attempts). Transfer ID: ${transferId}`);
     }
   }
 
