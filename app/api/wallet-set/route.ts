@@ -24,9 +24,9 @@ export async function PUT(req: NextRequest) {
   try {
     const { entityName } = await req.json();
 
-    if (!entityName.trim()) {
+    if (typeof entityName !== "string" || !entityName.trim()) {
       return NextResponse.json(
-        { error: "entityName is required" },
+        { error: "entityName is required and must be a non-empty string" },
         { status: 400 }
       );
     }
