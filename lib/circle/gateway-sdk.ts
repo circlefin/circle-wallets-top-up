@@ -39,7 +39,10 @@ import {
 export const GATEWAY_WALLET_ADDRESS = "0x0077777d7EBA4688BDeF3E311b846F25870A19B9";
 export const GATEWAY_MINTER_ADDRESS = "0x0022222ABE238Cc2C7Bb1f21003F0a260052475B";
 
-const arcRpcKey = process.env.ARC_TESTNET_RPC_KEY || 'c0ca2582063a5bbd5db2f98c139775e982b16919';
+const arcRpcKey = process.env.ARC_TESTNET_RPC_KEY;
+if (!arcRpcKey) {
+  throw new Error("ARC_TESTNET_RPC_KEY environment variable is not set");
+}
 
 export const arcTestnet = {
   id: 5042002,
