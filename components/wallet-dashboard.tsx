@@ -41,7 +41,14 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator"
 import { TransactionHistory } from "@/components/transaction-history";
 import { toast } from "sonner";
-import { Copy, RefreshCw } from "lucide-react";
+import { Copy, RefreshCw, Info, ArrowLeftRight } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { CHAIN_NAMES } from "@/lib/chain-config";
 
 type SupportedChain = "arcTestnet" | "baseSepolia" | "avalancheFuji";
 
@@ -134,6 +141,7 @@ export function WalletDashboard() {
   const [gatewayBalance, setGatewayBalance] = useState<number>(0);
   const [walletBalance, setWalletBalance] = useState<number>(0);
   const [chainBalances, setChainBalances] = useState<ChainBalance[]>([]);
+  const [gatewayChainBalances, setGatewayChainBalances] = useState<ChainBalance[]>([]);
   const [balanceLoading, setBalanceLoading] = useState(true);
 
   // Deposit state
@@ -199,6 +207,7 @@ export function WalletDashboard() {
       setGatewayBalance(totalGateway);
       setWalletBalance(totalWallet);
       setChainBalances(allChainBalances);
+      setGatewayChainBalances(allGatewayBalances);
     } catch (err: any) {
       toast.error("Balance Update Failed", {
         description: `Failed to fetch balances: ${err.message}`,
@@ -499,12 +508,39 @@ export function WalletDashboard() {
                 ) : totalBalance !== null ? (
                   <div className="space-y-4">
                     <div>
-                      <p className="text-sm text-muted-foreground">
+                      <p className="text-sm text-muted-foreground flex items-center gap-1">
                         Arc Gateway Balance
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Info className="h-3.5 w-3.5 cursor-help text-muted-foreground/70" />
+                            </TooltipTrigger>
+                            <TooltipContent className="max-w-[280px]">
+                              <p>Gateway provides a unified USDC balance across multiple chains. You can deposit on any chain and transfer to any other - Gateway handles the cross-chain routing automatically.</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
                       </p>
                       <p className="text-2xl font-bold">
                         {gatewayBalance.toLocaleString('en-US', { minimumFractionDigits: 6, maximumFractionDigits: 6 })} USDC
                       </p>
+                      {gatewayChainBalances.filter(cb => cb.balance > 0).length > 0 && (
+                        <ul className="text-xs space-y-1 mt-1 text-muted-foreground">
+                          {gatewayChainBalances.filter(cb => cb.balance > 0).map((cb, idx) => (
+                            <li
+                              key={`gateway-${idx}-${cb.chain}-${cb.balance}`}
+                              className="flex justify-between items-center gap-2"
+                            >
+                              <span className="capitalize">
+                                {CHAIN_NAMES[cb.chain as keyof typeof CHAIN_NAMES] || cb.chain}
+                              </span>
+                              <span className="font-mono">
+                                {cb.balance.toFixed(6)}
+                              </span>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
                     </div>
                     <Separator className="my-4" />
                     <div>
@@ -612,6 +648,16 @@ export function WalletDashboard() {
                         </SelectContent>
                       </Select>
                     </div>
+                    {sourceChain !== destinationChain && (
+                      <div className="flex items-center gap-2 rounded-md border border-blue-200 bg-blue-50 px-3 py-2 dark:border-blue-800 dark:bg-blue-950">
+                        <ArrowLeftRight className="h-4 w-4 text-blue-600 dark:text-blue-400 shrink-0" />
+                        <p className="text-xs text-blue-700 dark:text-blue-300">
+                          Cross-chain transfer: Gateway will route USDC from{" "}
+                          <span className="font-medium">{CHAIN_NAMES[sourceChain]}</span> to{" "}
+                          <span className="font-medium">{CHAIN_NAMES[destinationChain]}</span> via burn/mint.
+                        </p>
+                      </div>
+                    )}
                     <Alert>
                       <AlertCircleIcon className="h-4 w-4" />
                       <AlertTitle>Gas Fees Required</AlertTitle>
