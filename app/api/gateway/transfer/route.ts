@@ -40,10 +40,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { sourceChain, destinationChain, amount, recipientAddress } =
-    await req.json();
+  let sourceChain: string | undefined;
+  let destinationChain: string | undefined;
+  let amount: string | undefined;
+  let recipientAddress: string | undefined;
 
   try {
+    ({ sourceChain, destinationChain, amount, recipientAddress } =
+      await req.json());
     if (!sourceChain || !destinationChain || !amount) {
       return NextResponse.json(
         {
@@ -200,6 +204,10 @@ export async function POST(req: NextRequest) {
       recipient,
     });
   } catch (error: any) {
+    if (error instanceof SyntaxError) {
+      return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+    }
+
     console.error("Error in transfer:", error);
 
     // Check if this is an insufficient gas error
