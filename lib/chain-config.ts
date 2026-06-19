@@ -28,7 +28,7 @@ export const CHAIN_NAMES: Record<SupportedChain, string> = {
 };
 
 export const NATIVE_TOKENS: Record<string, string> = {
-  arcTestnet: "ARC",
+  arcTestnet: "USDC",
   avalancheFuji: "AVAX",
   baseSepolia: "ETH",
 };
