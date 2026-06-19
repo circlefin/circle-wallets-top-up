@@ -46,8 +46,24 @@ export async function handleDeposit(
     return { error: 'Missing amount' };
   }
 
-  // TODO: Integrate Circle Paymaster API for gas abstraction
-  // Placeholder for deposit logic with gas paid in USDC
+  /**
+   * Circle Paymaster API Integration (Planned)
+   *
+   * The Circle Paymaster API enables gas abstraction for ERC-4337 UserOperations,
+   * allowing users to pay transaction fees in USDC instead of native gas tokens.
+   *
+   * Planned integration steps:
+   * 1. Construct the deposit UserOperation for the target chain.
+   * 2. Call the Circle Paymaster API (`POST /paymaster/policy/{policyId}/sponsor`)
+   *    to obtain a sponsored `paymasterAndData` payload.
+   * 3. Sign the sponsored UserOperation with the user's developer-controlled wallet.
+   * 4. Submit the signed UserOperation to the bundler for on-chain execution.
+   *
+   * This will replace the mock deposit logic below with actual on-chain transactions
+   * where gas fees are transparently covered in USDC via the Circle Paymaster.
+   *
+   * @see https://developers.circle.com/paymaster/overview
+   */
   const depositResult = {
     txHash: 'mock-tx-hash',
     gatewayWalletAddress: 'mock-gateway-wallet-address',
