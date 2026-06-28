@@ -33,6 +33,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { createClient } from "@/lib/supabase/client";
 import { ChainBalance } from "@/lib/chain-config";
+import { BalanceBreakdown } from "@/components/balance-breakdown";
 import { AlertCircleIcon } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -498,23 +499,11 @@ export function WalletDashboard() {
                   </div>
                 ) : totalBalance !== null ? (
                   <div className="space-y-4">
-                    <div>
-                      <p className="text-sm text-muted-foreground">
-                        Arc Gateway Balance
-                      </p>
-                      <p className="text-2xl font-bold">
-                        {gatewayBalance.toLocaleString('en-US', { minimumFractionDigits: 6, maximumFractionDigits: 6 })} USDC
-                      </p>
-                    </div>
-                    <Separator className="my-4" />
-                    <div>
-                      <p className="text-sm text-muted-foreground">
-                        Wallet Balance
-                      </p>
-                      <p className="text-2xl font-bold">
-                        {walletBalance.toLocaleString('en-US', { minimumFractionDigits: 6, maximumFractionDigits: 6 })} USDC
-                      </p>
-                    </div>
+                    <BalanceBreakdown
+                      gatewayBalance={gatewayBalance}
+                      walletBalance={walletBalance}
+                      chainBalances={chainBalances}
+                    />
                     {chainBalances.filter(cb => cb.balance > 0).length > 0 ? (
                       <ul className="text-xs space-y-1 mt-[-8px] text-muted-foreground">
                         {chainBalances.filter(cb => cb.balance > 0).map((cb, idx) => (
