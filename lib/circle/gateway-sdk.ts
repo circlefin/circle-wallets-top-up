@@ -294,8 +294,13 @@ interface ChallengeResponse {
   id: string;
 }
 
+const TRANSACTION_POLL_INTERVAL_MS = 2_000;
+const TRANSACTION_POLL_MAX_ATTEMPTS = 90;
+const ATTESTATION_POLL_INTERVAL_MS = 3_000;
+const ATTESTATION_POLL_MAX_ATTEMPTS = 60;
+
 async function waitForTransactionConfirmation(challengeId: string): Promise<string> {
-  while (true) {
+  for (let attempt = 1; attempt <= TRANSACTION_POLL_MAX_ATTEMPTS; attempt++) {
     const response = await circleDeveloperSdk.getTransaction({ id: challengeId });
     const tx = response.data?.transaction;
 
@@ -310,9 +315,57 @@ async function waitForTransactionConfirmation(challengeId: string): Promise<stri
       throw new Error(`Transaction ${challengeId} failed with reason: ${tx.errorReason}`);
     }
 
-    console.log(`Transaction ${challengeId} state: ${tx?.state}. Polling again in 2s...`);
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    console.log(
+      `Transaction ${challengeId} state: ${tx?.state}. ` +
+      `Polling again in 2s (${attempt}/${TRANSACTION_POLL_MAX_ATTEMPTS})...`
+    );
+    await new Promise(resolve => setTimeout(resolve, TRANSACTION_POLL_INTERVAL_MS));
   }
+
+  throw new Error(
+    `Transaction ${challengeId} did not reach a terminal state after ` +
+    `${TRANSACTION_POLL_MAX_ATTEMPTS} attempts.`
+  );
+}
+
+async function waitForGatewayAttestation(transferId: string): Promise<{
+  attestation: `0x${string}`;
+  signature: `0x${string}`;
+}> {
+  for (let attempt = 1; attempt <= ATTESTATION_POLL_MAX_ATTEMPTS; attempt++) {
+    await new Promise(resolve => setTimeout(resolve, ATTESTATION_POLL_INTERVAL_MS));
+
+    const response = await fetch(
+      `https://gateway-api-testnet.circle.com/v1/transfers/${transferId}`
+    );
+    if (!response.ok) {
+      throw new Error(
+        `Gateway API error while polling transfer ${transferId}: ${response.status}`
+      );
+    }
+
+    const result = await response.json();
+    const status = result.status || result.state;
+    console.log(
+      `Transfer Status: ${status} ` +
+      `(attempt ${attempt}/${ATTESTATION_POLL_MAX_ATTEMPTS})`
+    );
+
+    if (result.attestation && result.signature) {
+      return {
+        attestation: result.attestation as `0x${string}`,
+        signature: result.signature as `0x${string}`,
+      };
+    }
+    if (status === "FAILED") {
+      throw new Error(`Transfer failed on Gateway: ${JSON.stringify(result)}`);
+    }
+  }
+
+  throw new Error(
+    `Attestation not received after ${ATTESTATION_POLL_MAX_ATTEMPTS} attempts. ` +
+    `Transfer ID: ${transferId}`
+  );
 }
 
 async function initiateContractInteraction(
@@ -784,34 +837,11 @@ export async function transferGatewayBalanceWithEOA(
 
   if (!finalAttestation || !finalSignature) {
     console.log(`Polling for attestation...`);
-    
-    let attempts = 0;
-    const maxAttempts = 60; // 3 minutes max
-    
-    while (attempts < maxAttempts) {
-      await new Promise((r) => setTimeout(r, 3000)); // Wait 3s
 
-      const pollResponse = await fetch(`https://gateway-api-testnet.circle.com/v1/transfers/${transferId}`);
-      const pollJson = await pollResponse.json();
-      const status = pollJson.status || pollJson.state;
-
-      console.log(`Transfer Status: ${status} (attempt ${attempts + 1}/${maxAttempts})`);
-
-      if (pollJson.attestation && pollJson.signature) {
-        finalAttestation = pollJson.attestation;
-        finalSignature = pollJson.signature;
-        console.log(`Attestation received!`);
-        break;
-      } else if (status === "FAILED") {
-        throw new Error(`Transfer failed: ${JSON.stringify(pollJson)}`);
-      }
-      
-      attempts++;
-    }
-    
-    if (!finalAttestation || !finalSignature) {
-      throw new Error(`Attestation not received after ${maxAttempts} attempts. Transfer ID: ${transferId}`);
-    }
+    const result = await waitForGatewayAttestation(transferId);
+    finalAttestation = result.attestation;
+    finalSignature = result.signature;
+    console.log(`Attestation received!`);
   }
 
   return {
@@ -882,23 +912,9 @@ export async function transferUnifiedBalanceCircle(
   let finalSignature = attestationSignature;
 
   if (!finalAttestation || !finalSignature) {
-    while (true) {
-      await new Promise((r) => setTimeout(r, 3000)); // Wait 3s
-
-      const pollResponse = await fetch(`https://gateway-api-testnet.circle.com/v1/transfers/${transferId}`);
-      const pollJson = await pollResponse.json();
-      const status = pollJson.status || pollJson.state;
-
-      console.log(`Transfer Status: ${status}`);
-
-      if (pollJson.attestation && pollJson.signature) {
-        finalAttestation = pollJson.attestation;
-        finalSignature = pollJson.signature;
-        break;
-      } else if (status === "FAILED") {
-        throw new Error(`Transfer failed on Gateway: ${JSON.stringify(pollJson)}`);
-      }
-    }
+    const result = await waitForGatewayAttestation(transferId);
+    finalAttestation = result.attestation;
+    finalSignature = result.signature;
   }
 
   // 6. Execute Mint on Destination (Custodial)
